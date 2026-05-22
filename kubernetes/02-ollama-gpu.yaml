@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-gpu
+  namespace: nexoryx-gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama-gpu
+  template:
+    metadata:
+      labels:
+        app: ollama-gpu
+    spec:
+      runtimeClassName: nvidia
+      containers:
+      - name: ollama
+        image: ollama/ollama
+        ports:
+        - containerPort: 11434
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            cpu: "4"
+            memory: "16Gi"
+          requests:
+            cpu: "2"
+            memory: "8Gi"
+        volumeMounts:
+        - mountPath: /root/.ollama
+          name: ollama-storage
+        readinessProbe:
+          tcpSocket:
+            port: 11434
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 11434
+          initialDelaySeconds: 60
+          periodSeconds: 20
+      volumes:
+      - name: ollama-storage
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-gpu
+  namespace: nexoryx-gpu
+spec:
+  selector:
+    app: ollama-gpu
+  ports:
+  - port: 11434
+    targetPort: 11434
